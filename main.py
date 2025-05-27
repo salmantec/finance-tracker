@@ -8,12 +8,13 @@ import os
 st.set_page_config(page_title="Simple Finance App", page_icon="💰", layout="wide")
 
 category_file = "categories.json"
+default_category = "Uncategorized"
 
 # Different categories of transactions
 # Initialize session state for categories if not already present
 if "categories" not in st.session_state:
     st.session_state.categories = {
-        "Uncategorized": [],
+        default_category: [],
     }
 
 # Load categories from JSON file if it exists
@@ -25,6 +26,21 @@ def save_categories():
     with open(category_file, "w") as f:
         json.dump(st.session_state.categories, f)
 
+def categorize_transaction(df):
+    df["Category"] = default_category  # Default category
+
+    for category, keywords in st.session_state.categories.items():
+        if category == default_category or not keywords:
+            continue
+
+        lowered_keywords = [keyword.lower().strip() for keyword in keywords]
+
+        for idx, row in df.iterrows():
+            details = row["Details"].lower().strip()
+            if details in lowered_keywords:
+                df.at[idx, "Category"] = category
+
+    return df
 
 def load_transactions(file):
     try:
@@ -34,7 +50,7 @@ def load_transactions(file):
         df["Date"] = pd.to_datetime(df["Date"], format="%d %b %Y") # Convert Date to datetime format
         
         # st.write(df)
-        return df
+        return categorize_transaction(df)
     except Exception as e:
         st.error(f"Error processing file: {str(e)}")
         return None
